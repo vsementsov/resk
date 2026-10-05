@@ -1,0 +1,11 @@
+/*.jpg
+/*.zip
+/ПАМЯТКА.md
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.ssh/
+.DS_Store
+/resk-site-before-update.tar.gz
