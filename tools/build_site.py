@@ -1,20 +1,23 @@
 """Generate static review pages. Production: --base-url https://your-confirmed-host/"""
 from pathlib import Path
-import re, html, argparse, json
+import re, html, argparse, json, hashlib
+from PIL import Image
 from urllib.parse import urljoin
 P=Path(__file__).resolve().parents[1]; D=P/'dist'
+def asset_version(name):
+    return hashlib.sha256((D/name).read_bytes()).hexdigest()[:10]
 a=argparse.ArgumentParser(); a.add_argument('--base-url'); args=a.parse_args()
 if args.base_url and not args.base_url.startswith('https://'): a.error('base URL must use HTTPS')
 s=(P/'content/original-landing.html').read_text()
 def section(id):
     match=re.search(r'<section\b[^>]*\bid="'+id+r'"[^>]*>.*?</section>',s,re.S)
     return match.group() if match else ''
-services=[('korporativnoe-pitanie','Корпоративное питание','Рационы и обслуживание под график предприятия.','canteen.webp',['Завтраки, обеды и ужины','Ланч-боксы и столы заказов','VIP-обслуживание','Протокольные и праздничные мероприятия'],'Предприятия, офисы и вахтовые площадки','Численность людей, сменность, имеющаяся кухня, условия доставки и требования к меню.'),('gostinichnyy-servis','Гостиничный сервис и санатории','Питание и повседневный сервис для гостей и персонала.','sanatorium.webp',['Заказное питание и шведский стол','Лечебно-профилактические рационы','Рестораны, бары и кафе','Доставка блюд в номера'],'Гостиницы, санатории и объекты размещения','Категории гостей, загрузка объекта, режим питания и требования к специальным рационам.'),('klining','Профессиональный клининг','Чистота помещений и территории с учётом режима объекта.','cleaning.webp',['Ежедневная и генеральная уборка','Уборка после ремонта','Окна, фасады и территория','Снег, отходы, дезинфекция и дератизация'],'Производственные, административные и жилые помещения','Площадь, типы покрытий, интенсивность использования и допустимое время выполнения работ.'),('tekhnicheskaya-ekspluatatsiya','Техническая эксплуатация','Обслуживание инженерных систем, зданий и сооружений.','engineering.webp',['Электричество, тепло и вода','Вентиляция и канализация','Слаботочные сети','Холодильное и лифтовое оборудование'],'Объекты с инженерной инфраструктурой','Перечень оборудования, техническая документация, состояние систем и действующие регламенты.'),('transport-i-snabzhenie','Транспорт и снабжение','Перевозки и обеспечение повседневной работы объекта.','transport.png',['Грузоперевозки','Доставка персонала','Работы спецтехники','Снабжение СИЗ и питьевой водой'],'Городские и удалённые площадки','Маршруты, график перевозок, объёмы грузов, сезонность и условия доступа на объект.'),('servisnaya-podderzhka','Сервисная поддержка','Сопутствующие процессы в единой системе обслуживания.','remote-food.webp',['Прачечная и химчистка','Поездки и размещение','Подбор, учёт и подготовка персонала','Координация и контроль услуг'],'Объекты, которым требуется несколько связанных сервисов','Перечень процессов, график работы, распределение ответственности и приоритеты заказчика.')]
+services=[('korporativnoe-pitanie','Корпоративное питание','Рационы и обслуживание под график предприятия.','canteen.webp',['Завтраки, обеды и ужины','Ланч-боксы и столы заказов','VIP-обслуживание','Протокольные и праздничные мероприятия'],'Предприятия, офисы и вахтовые площадки','Численность людей, сменность, имеющаяся кухня, условия доставки и требования к меню.'),('gostinichnyy-servis','Гостиничный сервис и санатории','Питание и повседневный сервис для гостей и персонала.','sanatorium.webp',['Заказное питание и шведский стол','Лечебно-профилактические рационы','Рестораны, бары и кафе','Доставка блюд в номера'],'Гостиницы, санатории и объекты размещения','Категории гостей, загрузка объекта, режим питания и требования к специальным рационам.'),('klining','Профессиональный клининг','Чистота помещений и территории с учётом режима объекта.','cleaning.webp',['Ежедневная и генеральная уборка','Уборка после ремонта','Окна, фасады и территория','Снег, отходы, дезинфекция и дератизация'],'Производственные, административные и жилые помещения','Площадь, типы покрытий, интенсивность использования и допустимое время выполнения работ.'),('tekhnicheskaya-ekspluatatsiya','Техническая эксплуатация','Обслуживание инженерных систем, зданий и сооружений.','engineering.webp',['Электричество, тепло и вода','Вентиляция и канализация','Слаботочные сети','Холодильное и лифтовое оборудование'],'Объекты с инженерной инфраструктурой','Перечень оборудования, техническая документация, состояние систем и действующие регламенты.'),('transport-i-snabzhenie','Транспорт и снабжение','Перевозки и обеспечение повседневной работы объекта.','transport.webp',['Грузоперевозки','Доставка персонала','Работы спецтехники','Снабжение СИЗ и питьевой водой'],'Городские и удалённые площадки','Маршруты, график перевозок, объёмы грузов, сезонность и условия доступа на объект.'),('servisnaya-podderzhka','Сервисная поддержка','Сопутствующие процессы в единой системе обслуживания.','remote-food.webp',['Прачечная и химчистка','Поездки и размещение','Подбор, учёт и подготовка персонала','Координация и контроль услуг'],'Объекты, которым требуется несколько связанных сервисов','Перечень процессов, график работы, распределение ответственности и приоритеты заказчика.')]
 nav=[('company/','Компания'),('services/','Услуги'),('suppliers/','Поставщикам'),('career/','Карьера'),('contacts/','Контакты')]
 dialog=re.search(r'<dialog.*?</dialog>',s,re.S).group()
-footer='<footer><div class="wrap"><a class="brand" href="{root}"><img src="{root}assets/logo.png" alt="РЕСК" width="216" height="70"></a><p>Российская Единая Сервисная Компания<br>Забота о людях. Надёжная работа объекта.</p><a href="{root}contacts/">Обсудить сотрудничество →</a></div></footer>'
+footer='<footer><div class="wrap"><a class="brand" href="{root}"><img src="{root}assets/logo.svg" alt="РЕСК" width="1000" height="310"></a><p>Российская Единая Сервисная Компания<br>Забота о людях. Надёжная работа объекта.</p><a href="{root}contacts/">Обсудить сотрудничество →</a></div></footer>'
 def cards(root):
-    return '<div class="direction-grid">'+''.join(f'<a class="direction" style="--direction-image:url({root}assets/{services[i][3]})" href="{root}services/{slug}/"><span class="eyebrow">0{i+1}</span><h3>{title}</h3><p>{desc}</p><span class="arrow" aria-hidden="true">↗</span></a>' for i,(slug,title,desc,*_) in enumerate(services))+'</div>'
+    return '<div class="direction-grid">'+''.join(f'<a class="direction" style="--direction-image:url({root}assets/{Path(services[i][3]).stem}-small.webp)" href="{root}services/{slug}/"><span class="eyebrow">0{i+1}</span><h3>{title}</h3><p>{desc}</p><span class="arrow" aria-hidden="true">↗</span></a>' for i,(slug,title,desc,*_) in enumerate(services))+'</div>'
 def cta(root): return f'<section class="closing compact"><div class="wrap"><div><span class="eyebrow light">СЛЕДУЮЩИЙ ШАГ</span><h2>Обсудим задачи<br>вашего объекта</h2></div><a class="button coral" href="{root}contacts/">Перейти к обсуждению →</a></div></section>'
 def page(path,title,desc,body,crumbs=()):
     depth=path.count('/') if path else 0; root='../'*depth or './'
@@ -29,9 +32,31 @@ def page(path,title,desc,body,crumbs=()):
         bread=f'<nav class="breadcrumbs wrap" aria-label="Хлебные крошки"><a href="{root}">Главная</a>'
         for url,label in crumbs: bread+=f'<span aria-hidden="true">/</span><a href="{root}{url}">{label}</a>'
         bread+=f'<span aria-hidden="true">/</span><span>{html.escape(title.split(" — ")[0])}</span></nav>'
-    out=f'<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title><meta name="description" content="{html.escape(desc)}">{head}<link rel="icon" href="{root}assets/symbol.png"><link rel="stylesheet" href="{root}style.css"><link rel="stylesheet" href="{root}architecture.css"></head><body><a class="skip" href="#main">К содержанию</a><header><div class="wrap header"><a class="brand" href="{root}" aria-label="РЕСК — главная"><img src="{root}assets/logo.png" alt="РЕСК" width="216" height="70"></a><nav id="primary-nav" aria-label="Главное меню">{links}</nav><button id="menu" aria-controls="primary-nav" aria-expanded="false" aria-label="Открыть меню">Меню</button></div></header><main id="main">{bread}{body.replace("{{root}}",root)}</main>{footer.format(root=root)}{dialog}<script src="{root}script.js"></script></body></html>'
+    out=f'<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title><meta name="description" content="{html.escape(desc)}">{head}<link rel="icon" type="image/svg+xml" href="{root}assets/favicon.svg"><link rel="stylesheet" href="{root}style.css"><link rel="stylesheet" href="{root}architecture.css"></head><body><a class="skip" href="#main">К содержанию</a><header><div class="wrap header"><a class="brand" href="{root}" aria-label="РЕСК — главная"><img src="{root}assets/logo.svg" alt="РЕСК" width="1000" height="310"></a><nav id="primary-nav" aria-label="Главное меню">{links}</nav><button id="menu" aria-controls="primary-nav" aria-expanded="false" aria-label="Открыть меню">Меню</button></div></header><main id="main">{bread}{body.replace("{{root}}",root)}</main>{footer.format(root=root)}{dialog}<script src="{root}script.js"></script></body></html>'
     # Retained content sections use local assets.
+    for name in ['style.css','architecture.css','script.js']:
+        out=out.replace(f'{root}{name}"',f'{root}{name}?v={asset_version(name)}"')
     out=out.replace('src="assets/','src="'+root+'assets/')
+    def optimize_image(match):
+        tag=match.group()
+        source=re.search(r'src="([^"]+)"',tag)
+        if not source:return tag
+        name=Path(source.group(1)).name
+        if 'decoding=' not in tag:tag=tag.replace('<img ','<img decoding="async" ',1)
+        if name.endswith('.webp'):
+            image=D/'assets'/name
+            width,height=Image.open(image).size
+            tag=re.sub(r' width="\d+"| height="\d+"','',tag)
+            stem=Path(name).stem
+            small=D/'assets'/(stem+'-small.webp')
+            attrs=f' width="{width}" height="{height}"'
+            if small.exists():
+                small_width=Image.open(small).width
+                sizes='100vw' if stem=='hero' else '(max-width:820px) calc(100vw - 40px), (max-width:1439px) 50vw, 660px'
+                attrs+=f' srcset="{root}assets/{small.name} {small_width}w, {root}assets/{name} {width}w" sizes="{sizes}"'
+            tag=tag[:-1]+attrs+'>'
+        return tag
+    out=re.sub(r'<img\b[^>]*>',optimize_image,out)
     target=D/path/'index.html'; target.parent.mkdir(parents=True,exist_ok=True); target.write_text(out)
     return path
 paths=[]
