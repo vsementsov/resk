@@ -1,0 +1,19 @@
+(resk-files) {
+    root * /var/www/resk/current
+    encode zstd gzip
+    file_server
+    header X-Content-Type-Options nosniff
+    header Referrer-Policy strict-origin-when-cross-origin
+    @html path / /company/ /services/* /suppliers/ /career/ /contacts/ *.html
+    header @html Cache-Control no-cache
+}
+
+xn--e1akqf.xn--p1ai {
+    import resk-files
+}
+
+# Direct-IP preview also serves the deployment health check.
+http://212.193.14.81 {
+    import resk-files
+    header X-Robots-Tag noindex
+}

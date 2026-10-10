@@ -10,3 +10,4 @@
 .DS_Store
 /resk-site-before-update.tar.gz
 /dist/review-style/
+__pycache__/

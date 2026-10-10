@@ -111,6 +111,6 @@ GitHub автоматически запустит публикацию. Дож�
 | Ошибка deployment / permissions | Смотрите красный шаг в Actions. В workflow должны сохраниться `pages: write`, `id-token: write` и environment `github-pages`; проверьте ограничения организации и окружения. |
 | Нет фотографий или стилей | Папка `dist/assets/`, `dist/style.css` и `dist/script.js` загружены; пути и регистр имён совпадают. |
 
-Когда согласование закончится, основной сайт можно разместить на VPS по [MANUAL.md](MANUAL.md). Чтобы убрать тестовую публикацию, откройте **Settings → Pages → Unpublish site**; затем отключите workflow через **Actions → Publish preview to GitHub Pages → … → Disable workflow**, чтобы следующий push не опубликовал её снова.
+Основной сайт разворачивается на VDSina по [VDSINA.md](VDSINA.md). Чтобы убрать тестовую публикацию, откройте **Settings → Pages → Unpublish site**; затем отключите workflow через **Actions → Publish preview to GitHub Pages → … → Disable workflow**, чтобы следующий push не опубликовал её снова.
 
 Основа настройки: [официальная инструкция GitHub по custom workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages), [настройка источника публикации](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site), [HTTPS](https://docs.github.com/en/pages/getting-started-with-github-pages/securing-your-github-pages-site-with-https).

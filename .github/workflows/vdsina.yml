@@ -1,0 +1,52 @@
+name: Deploy website to VDSina
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: resk-vdsina
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DEPLOY_HOST: ${{ vars.VDSINA_HOST }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Package static website
+        run: tar -C dist -czf "$RUNNER_TEMP/resk-site.tar.gz" .
+      - name: Deploy over restricted SSH
+        env:
+          DEPLOY_KEY: ${{ secrets.VDSINA_DEPLOY_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VDSINA_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_HOST" && test -n "$DEPLOY_KEY" && test -n "$KNOWN_HOSTS"
+          umask 077
+          key="$RUNNER_TEMP/resk-key"
+          hosts="$RUNNER_TEMP/resk-known-hosts"
+          trap 'rm -f "$key" "$hosts"' EXIT
+          printf '%s\n' "$DEPLOY_KEY" > "$key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$hosts"
+          ssh -i "$key" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$hosts" -o BatchMode=yes -o ConnectTimeout=20 \
+            "resk-deploy@$DEPLOY_HOST" "deploy $GITHUB_SHA" < "$RUNNER_TEMP/resk-site.tar.gz"
+      - name: Verify deployed revision
+        run: |
+          curl --fail --silent --show-error --retry 3 --max-time 20 \
+            "http://$DEPLOY_HOST/deploy-version.json" > "$RUNNER_TEMP/deployed.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          actual = json.loads((Path(os.environ['RUNNER_TEMP']) / 'deployed.json').read_text())['commit']
+          assert actual == os.environ['GITHUB_SHA'], f'Expected current commit, received {actual}'
+          print(f'Live revision: {actual}')
+          PY
