@@ -3,7 +3,32 @@ const formats={remote:{label:'ПИТАНИЕ ВАХТОВОЙ КОМАНДЫ',ti
 const tabs=[...document.querySelectorAll('[data-format]')];
 function activate(tab){tabs.forEach(t=>{t.setAttribute('aria-selected',String(t===tab));t.tabIndex=t===tab?0:-1});const f=formats[tab.dataset.format];document.querySelector('#format-panel').setAttribute('aria-labelledby',tab.id);document.querySelector('#format-label').textContent=f.label;document.querySelector('#format-title').textContent=f.title;document.querySelector('#format-title').style.whiteSpace='pre-line';document.querySelector('#format-text').textContent=f.text;const im=document.querySelector('#format-image');im.src=new URL('assets/'+f.image,siteBase).href;im.srcset=new URL('assets/'+f.image.replace('.webp','-small.webp'),siteBase).href+' 480w, '+im.src+' '+(f.image==='sanatorium.webp'?1000:768)+'w';im.alt=f.alt;const list=document.querySelector('#format-list');list.replaceChildren(...f.list.map(text=>{const li=document.createElement('li');li.textContent=text;return li}))}
 tabs.forEach((tab,i)=>{tab.addEventListener('click',()=>activate(tab));tab.addEventListener('keydown',e=>{let n;if(e.key==='ArrowRight')n=(i+1)%tabs.length;if(e.key==='ArrowLeft')n=(i+tabs.length-1)%tabs.length;if(e.key==='Home')n=0;if(e.key==='End')n=tabs.length-1;if(n!==undefined){e.preventDefault();activate(tabs[n]);tabs[n].focus()}})});
-const menu=document.querySelector('#menu');menu.addEventListener('click',()=>{const open=document.querySelector('header').classList.toggle('menu-open');menu.setAttribute('aria-expanded',String(open))});document.querySelectorAll('nav a').forEach(a=>a.addEventListener('click',()=>{document.querySelector('header').classList.remove('menu-open');menu.setAttribute('aria-expanded','false')}));
+const siteHeader=document.querySelector('header');
+const menu=document.querySelector('#menu');
+const primaryNav=document.querySelector('#primary-nav');
+const mobileMenu=matchMedia('(max-width:820px)');
+function setMenu(open){
+ open=Boolean(open&&mobileMenu.matches);
+ siteHeader.classList.toggle('menu-open',open);
+ document.body.classList.toggle('menu-open',open);
+ menu.setAttribute('aria-expanded',String(open));
+ menu.setAttribute('aria-label',open?'Закрыть меню':'Открыть меню');
+ menu.querySelector('.menu-label').textContent=open?'Закрыть':'Меню';
+ primaryNav.inert=mobileMenu.matches&&!open;
+}
+menu.addEventListener('click',()=>setMenu(menu.getAttribute('aria-expanded')!=='true'));
+primaryNav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>setMenu(false)));
+document.querySelector('.menu-backdrop').addEventListener('click',()=>setMenu(false));
+document.addEventListener('keydown',event=>{
+ if(event.key==='Escape'&&menu.getAttribute('aria-expanded')==='true'){
+  setMenu(false);menu.focus();
+ }
+});
+document.addEventListener('focusin',event=>{
+ if(menu.getAttribute('aria-expanded')==='true'&&!siteHeader.contains(event.target))setMenu(false);
+});
+mobileMenu.addEventListener('change',()=>setMenu(false));
+setMenu(false);
 const dialog=document.querySelector('#brief');document.querySelectorAll('[data-brief]').forEach(b=>b.addEventListener('click',()=>dialog.showModal()));document.querySelector('.close').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close()}});
 document.querySelector('#brief-form').addEventListener('submit',e=>{e.preventDefault();const data=new FormData(e.currentTarget);const text='Запрос в РЕСК\n\nОбъект: '+data.get('object')+'\nКоличество людей и график: '+data.get('people')+'\nУслуги: '+(data.getAll('services').join(', ')||'Требуют уточнения')+'\nСрок запуска и задачи: '+data.get('task')+'\n';const url=URL.createObjectURL(new Blob(['\ufeff'+text],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='Запрос-в-РЕСК.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);document.querySelector('#brief-status').textContent='Файл подготовлен для скачивания. Передайте его представителю РЕСК.'});
 
@@ -54,7 +79,6 @@ document.querySelectorAll('.service details').forEach(details=>{
  });
 });
 
-// Soften the sticky header only after the page moves beneath it.
-const siteHeader=document.querySelector('header');
+// Float the header only after the page moves beneath it.
 function updateHeader(){siteHeader.classList.toggle('is-scrolled',window.scrollY>12)}
 window.addEventListener('scroll',updateHeader,{passive:true});updateHeader();
