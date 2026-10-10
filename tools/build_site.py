@@ -6,8 +6,11 @@ from urllib.parse import urljoin
 P=Path(__file__).resolve().parents[1]; D=P/'dist'
 def asset_version(name):
     return hashlib.sha256((D/name).read_bytes()).hexdigest()[:10]
-a=argparse.ArgumentParser(); a.add_argument('--base-url'); args=a.parse_args()
+a=argparse.ArgumentParser(); a.add_argument('--base-url'); a.add_argument('--share-base-url', default='https://xn--e1akqf.xn--p1ai/', help='Public URL for link previews; does not enable indexing'); args=a.parse_args()
 if args.base_url and not args.base_url.startswith('https://'): a.error('base URL must use HTTPS')
+if not args.share_base_url.startswith('https://'): a.error('sharing base URL must use HTTPS')
+share_base=(args.base_url or args.share_base_url).rstrip('/')+'/'
+share_image=urljoin(share_base,'assets/social-preview.jpg')+'?v='+asset_version('assets/social-preview.jpg')
 s=(P/'content/original-landing.html').read_text()
 def section(id):
     match=re.search(r'<section\b[^>]*\bid="'+id+r'"[^>]*>.*?</section>',s,re.S)
@@ -24,15 +27,18 @@ def page(path,title,desc,body,crumbs=()):
     head=f'<meta name="robots" content="{"index,follow" if args.base_url else "noindex,follow"}">'
     if args.base_url:
         url=urljoin(args.base_url.rstrip('/')+'/',path)
-        head+=f'<link rel="canonical" href="{url}"><meta property="og:url" content="{url}">'
+        head+=f'<link rel="canonical" href="{html.escape(url)}">'
     head+=f'<meta property="og:type" content="website"><meta property="og:title" content="{html.escape(title)}"><meta property="og:description" content="{html.escape(desc)}">'
+    head+=f'<meta property="og:url" content="{html.escape(urljoin(share_base,path))}"><meta property="og:site_name" content="РЕСК"><meta property="og:locale" content="ru_RU">'
+    head+=f'<meta property="og:image" content="{html.escape(share_image)}"><meta property="og:image:secure_url" content="{html.escape(share_image)}"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="Логотип РЕСК. Комплексный сервис для вашего объекта.">'
+    head+=f'<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{html.escape(title)}"><meta name="twitter:description" content="{html.escape(desc)}"><meta name="twitter:image" content="{html.escape(share_image)}"><meta name="twitter:image:alt" content="Логотип РЕСК. Комплексный сервис для вашего объекта.">'
     links=''.join(f'<a href="{root}{url}"'+(' aria-current="page"' if path==url else '')+f'>{label}</a>' for url,label in nav)
     bread=''
     if path:
         bread=f'<nav class="breadcrumbs wrap" aria-label="Хлебные крошки"><a href="{root}">Главная</a>'
         for url,label in crumbs: bread+=f'<span aria-hidden="true">/</span><a href="{root}{url}">{label}</a>'
         bread+=f'<span aria-hidden="true">/</span><span>{html.escape(title.split(" — ")[0])}</span></nav>'
-    out=f'<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title><meta name="description" content="{html.escape(desc)}">{head}<link rel="icon" type="image/svg+xml" href="{root}assets/favicon.svg"><link rel="stylesheet" href="{root}style.css"><link rel="stylesheet" href="{root}architecture.css"></head><body><a class="skip" href="#main">К содержанию</a><header><div class="wrap header"><a class="brand" href="{root}" aria-label="РЕСК — главная"><img src="{root}assets/logo.svg" alt="РЕСК" width="1000" height="310"></a><button id="menu" type="button" aria-controls="primary-nav" aria-expanded="false" aria-label="Открыть меню"><span class="menu-label">Меню</span><span class="menu-icon" aria-hidden="true"></span></button><nav id="primary-nav" aria-label="Главное меню">{links}</nav></div></header><div class="menu-backdrop" aria-hidden="true"></div><main id="main">{bread}{body.replace("{{root}}",root)}</main>{footer.format(root=root)}{dialog}<script src="{root}script.js"></script></body></html>'
+    out=f'<!doctype html><html lang="ru" prefix="og: https://ogp.me/ns#"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title><meta name="description" content="{html.escape(desc)}">{head}<link rel="icon" type="image/svg+xml" href="{root}assets/favicon.svg"><link rel="stylesheet" href="{root}style.css"><link rel="stylesheet" href="{root}architecture.css"></head><body><a class="skip" href="#main">К содержанию</a><header><div class="wrap header"><a class="brand" href="{root}" aria-label="РЕСК — главная"><img src="{root}assets/logo.svg" alt="РЕСК" width="1000" height="310"></a><button id="menu" type="button" aria-controls="primary-nav" aria-expanded="false" aria-label="Открыть меню"><span class="menu-label">Меню</span><span class="menu-icon" aria-hidden="true"></span></button><nav id="primary-nav" aria-label="Главное меню">{links}</nav></div></header><div class="menu-backdrop" aria-hidden="true"></div><main id="main">{bread}{body.replace("{{root}}",root)}</main>{footer.format(root=root)}{dialog}<script src="{root}script.js"></script></body></html>'
     # Retained content sections use local assets.
     for name in ['style.css','architecture.css','script.js']:
         out=out.replace(f'{root}{name}"',f'{root}{name}?v={asset_version(name)}"')
