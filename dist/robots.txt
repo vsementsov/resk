@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+# Review pages contain noindex; enable production with tools/build_site.py --base-url
